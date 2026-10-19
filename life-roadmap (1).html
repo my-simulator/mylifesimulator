@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="人生ロードマップ">
+<meta name="theme-color" content="#f6f3ee">
+<title>人生ロードマップ</title>
+<style>
+:root{
+  --bg:#f6f3ee; --paper:#fffdf9; --ink:#2b2a28; --sub:#857f75; --line:#e6e0d5; --line2:#cfc7b8;
+  --grid:rgba(120,110,95,.10); --grid2:rgba(120,110,95,.05);
+  --past:rgba(120,110,95,.055); --now:#d2593a; --now-soft:rgba(210,89,58,.08);
+  --accent:#2f6b66; --accent-bg:#e7f0ee;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif;
+  background:var(--bg);color:var(--ink);display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}
+
+/* header */
+.top{padding:calc(var(--safe-t) + 10px) 14px 10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);background:var(--bg);flex:none}
+.top h1{font-size:16px;font-weight:700;letter-spacing:.05em;flex:1;line-height:1.25}
+.top h1 small{display:block;font-size:11px;color:var(--sub);font-weight:400;letter-spacing:0}
+.hbtn{height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:999px;font-size:13px;background:var(--paper)}
+
+/* timeline */
+#scroller{flex:1;overflow:auto;position:relative;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;
+  user-select:none;-webkit-user-select:none;overscroll-behavior:contain;cursor:grab}
+#scroller.dragging{cursor:grabbing}
+.wrap{position:relative;display:flex;flex-direction:column}
+.ruler{position:sticky;top:0;z-index:5;height:48px;background:var(--paper);border-bottom:1px solid var(--line);flex:none}
+.tick{position:absolute;bottom:0;width:1px;height:5px;background:var(--line2)}
+.tick.major{height:11px;background:var(--sub)}
+.tick b{position:absolute;bottom:12px;left:4px;font-size:13px;font-weight:600;white-space:nowrap;letter-spacing:.01em}
+.tick b small{font-size:10px;font-weight:400;color:var(--sub);margin-left:1px}
+.tick.mo{height:7px;background:var(--line2)}
+.tick.mo b{font-size:11px;font-weight:400;color:var(--sub)}
+.tick i{position:absolute;bottom:28px;left:4px;font-size:10px;font-style:normal;color:var(--sub);white-space:nowrap}
+.items{position:relative;flex:1}
+.past{position:absolute;top:0;bottom:0;left:0;background:var(--past);pointer-events:none;z-index:1}
+.selband{position:absolute;top:0;bottom:0;background:var(--now-soft);border-left:1px dashed var(--now);border-right:1px dashed var(--now);pointer-events:none;z-index:1}
+.now{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--now);z-index:2;pointer-events:none;opacity:.85}
+.now.nowlabel{z-index:6;opacity:1}
+.now span{position:absolute;top:3px;left:5px;background:var(--now);color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:999px;white-space:nowrap}
+
+/* 大切な言葉・目標 */
+.board{flex:none;padding:8px 16px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+.motto{display:block;width:100%;text-align:left;font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif;color:var(--ink);padding:2px 0}
+.motto .mt{display:block;font-size:16px;font-weight:700;letter-spacing:.04em;line-height:1.5}
+.motto .mb{display:block;font-size:13px;line-height:1.7;color:#5a554d;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.motto .ph{font-family:-apple-system,"Hiragino Sans",sans-serif;font-size:13px;color:var(--sub)}
+.goals{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.goals::-webkit-scrollbar{display:none}
+.goal{flex:none;display:flex;align-items:baseline;gap:6px;padding:6px 12px;border:1px solid var(--accent);border-radius:999px;background:var(--paper);font-size:13px;white-space:nowrap}
+.goal b{color:var(--accent);font-weight:700;font-size:12px}
+.goal small{color:var(--sub);font-size:11px}
+
+/* 現在地を歩く人 */
+.walker{position:absolute;z-index:7;pointer-events:none;overflow:visible}
+/* 歩いている途中の姿勢で止めて描く（前の足・後ろの足、腕は逆に振る） */
+.walker .leg,.walker .arm{transform-box:view-box}
+.walker .leg{transform-origin:11px 18px}
+.walker .arm{transform-origin:12px 11px}
+.walker .l1{transform:rotate(-24deg)} .walker .l2{transform:rotate(24deg)}
+.walker .a1{transform:rotate(28deg)}  .walker .a2{transform:rotate(-28deg)}
+
+/* 時間軸の線（歩いてきた道は実線、これからは点線）と、その上の丸 */
+.track{position:absolute;height:0;z-index:1;pointer-events:none}
+.track.done{border-top:2px solid var(--accent);opacity:.55;margin-top:-1px}
+.track.todo{border-top:2px dashed var(--line2);margin-top:-1px}
+.pin{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid var(--accent);background:var(--paper);z-index:4;padding:0}
+.pin::after{content:"";position:absolute;inset:-12px}
+.pin.imp{background:var(--accent)}
+.pin.tent{border-style:dashed}
+.pin.multi{width:20px;height:20px;margin:-10px 0 0 -10px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;line-height:16px;text-align:center}
+.pin.past{opacity:.6}
+/* 吹き出し（丸から線を引いて横書きで表示） */
+.stem{position:absolute;width:1px;background:var(--accent);opacity:.45;z-index:2;pointer-events:none}
+.bub{position:absolute;display:flex;flex-direction:column;justify-content:center;gap:1px;padding:0 10px;border-radius:8px;
+  background:var(--paper);border:1px solid var(--line2);box-shadow:0 1px 3px rgba(60,50,30,.07);font-size:13px;text-align:left;z-index:3}
+.bub::before{content:"";position:absolute;top:-5px;left:8px;width:8px;height:8px;background:inherit;border-left:inherit;border-top:inherit;transform:rotate(45deg)}
+.bub .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;position:relative}
+.bub .sub{font-size:11px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.bub .gtag{font-size:10px;font-weight:700;color:#fff;background:var(--accent);border-radius:4px;padding:1px 4px;margin-right:5px;vertical-align:1px}
+.bub.imp{background:var(--accent-bg);border-color:var(--accent)}
+.bub.imp .tt{font-weight:600}
+.bub.tent{border-style:dashed}
+.bub.past{opacity:.7}
+.pin.flash,.bub.flash{animation:flash 1.2s ease}
+@keyframes flash{0%,40%{box-shadow:0 0 0 4px rgba(210,89,58,.45)}100%{box-shadow:0 0 0 0 rgba(210,89,58,0)}}
+.empty{position:absolute;z-index:2;font-size:13px;color:var(--sub);line-height:1.7;pointer-events:none;white-space:nowrap}
+
+.fam{position:sticky;bottom:0;z-index:5;background:rgba(246,243,238,.94);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-top:1px solid var(--line);padding:4px 0 5px;flex:none}
+.flane{position:relative;height:24px}
+.fname{position:sticky;left:0;z-index:2;display:inline-flex;align-items:center;height:24px;padding:0 14px 0 12px;font-size:12px;font-weight:600;
+  background:linear-gradient(to right,var(--bg) 78%,rgba(246,243,238,0))}
+.fa{position:absolute;top:4px;font-size:12px;color:var(--sub);padding-left:4px;white-space:nowrap}
+
+/* bottom bar */
+.bar{display:flex;align-items:center;gap:6px;padding:8px 10px calc(8px + var(--safe-b));border-top:1px solid var(--line);background:var(--paper);flex:none}
+.zoom{display:flex;align-items:center;border:1px solid var(--line2);border-radius:999px;overflow:hidden;background:var(--paper)}
+.zoom button{width:38px;height:38px;font-size:19px;line-height:1}
+.zoom span{min-width:50px;text-align:center;font-size:11px;color:var(--sub)}
+.tbtn{height:40px;padding:0 12px;border:1px solid var(--line2);border-radius:999px;font-size:13px;background:var(--paper);white-space:nowrap}
+.tbtn.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tbtn.off{color:var(--sub)}
+.tbtn.add{margin-left:auto;background:var(--now);border-color:var(--now);color:#fff;font-weight:600}
+
+/* sheet */
+.ov-bg{position:fixed;inset:0;background:rgba(30,28,24,.32);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:100%;max-width:560px;max-height:88vh;max-height:88dvh;overflow:auto;-webkit-overflow-scrolling:touch;
+  border-radius:18px 18px 0 0;padding:16px 18px calc(18px + var(--safe-b));box-shadow:0 -8px 30px rgba(0,0,0,.12);animation:up .2s ease;user-select:text;-webkit-user-select:text}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (min-width:700px){.ov-bg{align-items:center}.sheet{border-radius:18px;padding-bottom:20px}}
+.sh-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.sh-head h3{font-size:17px;flex:1}
+.sh-head h3 small{font-size:12px;color:var(--sub);font-weight:400;margin-left:4px}
+.x{margin-left:auto;width:34px;height:34px;border-radius:50%;font-size:20px;color:var(--sub)}
+.x:hover{background:var(--bg)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--bg);font-weight:600}
+.badge.imp{color:var(--accent);background:var(--accent-bg)}
+.badge.now{background:var(--now);color:#fff}
+.ititle{font-size:20px;line-height:1.4;margin:2px 0 6px;word-break:break-word}
+.meta{font-size:13px;color:var(--sub);margin-bottom:12px}
+.memo-full{font-size:15px;line-height:1.8;white-space:pre-wrap;word-break:break-word;margin-bottom:14px}
+.famat{background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:14px}
+.famat .lbl{margin-bottom:6px}
+.fchip{display:inline-block;font-size:13px;margin:2px 14px 2px 0}
+.fchip b{font-weight:600}
+.lbl{display:block;font-size:12px;color:var(--sub);margin-bottom:6px;font-weight:600}
+.field{margin-bottom:16px}
+input[type=text],input[type=number],input[type=date],textarea,select{
+  width:100%;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:#fff;color:var(--ink);-webkit-appearance:none;appearance:none}
+input[type=date]{min-height:44px}
+textarea{resize:vertical;line-height:1.6}
+input:focus,textarea:focus,select:focus{outline:2px solid rgba(210,89,58,.35);border-color:var(--now)}
+.inline{display:flex;align-items:center;gap:8px}
+.inline input{width:92px;text-align:center}
+.inline .yr{font-size:13px;color:var(--sub);margin-left:4px}
+.step{width:40px;height:40px;border:1px solid var(--line2);border-radius:10px;font-size:18px;background:#fff;flex:none}
+.seg{display:flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.seg label{flex:1;position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;text-align:center;padding:9px 4px;font-size:13px;cursor:pointer;border-left:1px solid var(--line2)}
+.seg label:first-child span{border-left:0}
+.seg input:checked+span{background:var(--ink);color:var(--paper);font-weight:600}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;margin:8px 0 4px;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--now)}
+.hint{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6}
+.actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.btn{height:44px;padding:0 16px;border:1px solid var(--line2);border-radius:12px;font-size:14px;background:#fff;flex:1;white-space:nowrap}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600}
+.btn.danger{color:#b5483e;flex:0 0 auto}
+.btn.sm{height:34px;flex:0 0 auto;font-size:13px;padding:0 12px;border-radius:10px}
+.list{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.li{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;width:100%}
+.li .ic{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);flex:none}
+.li .ic.imp{background:var(--accent)}
+.li .tt{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .s{font-size:12px;color:var(--sub);flex:none}
+.empty-s{font-size:13px;color:var(--sub);padding:8px 0 4px}
+.nav{display:flex;gap:6px}
+.sec{border-top:1px solid var(--line);padding-top:14px;margin-top:6px}
+.intro{font-size:14px;line-height:1.8;margin-bottom:16px}
+.range{display:flex;align-items:center;gap:8px;font-size:14px}
+.range input{width:84px;text-align:center}
+.fileb{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+.fileb input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+#toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translate(-50%,10px);background:var(--ink);color:var(--paper);
+  font-size:13px;padding:9px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:80;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>人生ロードマップ<small id="nowLabel"></small></h1>
+  <button class="hbtn" data-action="open-family">家族</button>
+  <button class="hbtn" data-action="open-settings">設定</button>
+</header>
+
+<section class="board" id="board"></section>
+
+<main id="scroller"><div class="wrap" id="wrap"></div></main>
+
+<nav class="bar">
+  <div class="zoom">
+    <button data-action="zoom-out" id="zOut" aria-label="縮小">−</button>
+    <span id="zLabel"></span>
+    <button data-action="zoom-in" id="zIn" aria-label="拡大">＋</button>
+  </div>
+  <button class="tbtn" data-action="go-now">現在地</button>
+  <button class="tbtn" data-action="toggle-family" id="famToggle">家族</button>
+  <button class="tbtn add" data-action="new-item">＋ 追加</button>
+</nav>
+
+<div id="sheetRoot"></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   定数
+   ========================================================= */
+const KEY = 'lifeRoadmap.v1';
+// 縮尺：1年あたりのピクセル数。mode で表示する情報量を切り替える
+const ZOOMS = [
+  { ppy:8,    mode:'overview', label:'人生全体' },
+  { ppy:14,   mode:'overview', label:'俯瞰' },
+  { ppy:26,   mode:'normal',   label:'数年' },
+  { ppy:46,   mode:'normal',   label:'通常' },
+  { ppy:100,  mode:'detail',   label:'詳細' },
+  { ppy:180,  mode:'detail',   label:'じっくり' },
+  { ppy:600,  mode:'month',    label:'月' },
+  { ppy:1200, mode:'month',    label:'月じっくり' }
+];
+const MONTH_PPY = 600;   // これ以上の縮尺で、月を指定した項目を月の位置に置く
+const GAP = 4;
+const PADL = 28, PADR = 72;
+
+/* =========================================================
+   データ（保存対象）
+   ========================================================= */
+function defaultData(){
+  return {
+    v:1,
+    settings:{ configured:false, birthMode:'birth', birth:'', ageAtBase:null, baseDate:'', minAge:0, maxAge:100, zoom:3 },
+    items:[],   // {id, age, month(1-12|null), title, memo, important, tentative, createdAt, updatedAt}
+    family:[],  // {id, name, birthMode, birth, ageAtBase, baseDate, visible}
+    motto:{ title:'', body:'' },   // 大切にしている言葉（タイトルと文章）
+    ui:{ showFamily:true }
+  };
+}
+function normalize(d){
+  const b = defaultData();
+  if (!d || typeof d !== 'object') return b;
+  const s = Object.assign(b.settings, d.settings || {});
+  s.zoom = Math.min(ZOOMS.length-1, Math.max(0, parseInt(s.zoom,10) || 0));
+  return {
+    v:1, settings:s,
+    items: Array.isArray(d.items) ? d.items.filter(x => x && typeof x.age === 'number' && x.title)
+      .map(x => Object.assign(x, { month: x.month >= 1 && x.month <= 12 ? (x.month|0) : null })) : [],
+    family: Array.isArray(d.family) ? d.family.filter(x => x && x.name) : [],
+    motto: typeof d.motto === 'string' ? { title:d.motto, body:'' }
+      : { title:String((d.motto && d.motto.title) || ''), body:String((d.motto && d.motto.body) || '') },
+    ui: Object.assign(b.ui, d.ui || {})
+  };
+}
+function load(){
+  try { const raw = localStorage.getItem(KEY); return raw ? normalize(JSON.parse(raw)) : defaultData(); }
+  catch(e){ return defaultData(); }
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch(e){ toast('保存できませんでした'); }
+}
+let data = load();
+
+/* 画面状態（保存しない） */
+const view = { sheet:null, selAge:null, flashId:null };
+
+/* =========================================================
+   年齢計算
+   ========================================================= */
+function pd(s){
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function today(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+function addYears(dt, n){ const r = new Date(dt); r.setFullYear(r.getFullYear()+n); return r; }
+// a から b までの経過年数（小数）
+function yearsBetween(a, b){
+  if (b < a) return -yearsBetween(b, a);
+  let y = b.getFullYear() - a.getFullYear();
+  let an = addYears(a, y);
+  if (an > b){ y--; an = addYears(a, y); }
+  const nx = addYears(a, y+1);
+  return y + (b - an) / (nx - an);
+}
+// 生年月日、または「基準日時点の年齢」から誕生日を求める（年齢のみの場合は半年ずらして概算）
+function birthOf(p){
+  if (!p) return null;
+  if (p.birthMode === 'birth') return pd(p.birth);
+  if (typeof p.ageAtBase !== 'number' || isNaN(p.ageAtBase)) return null;
+  const b = addYears(pd(p.baseDate) || today(), -p.ageAtBase);
+  b.setMonth(b.getMonth() - 6);
+  return b;
+}
+function myBirth(){ return birthOf(data.settings); }
+function currentAge(){ const b = myBirth(); return b ? Math.max(0, yearsBetween(b, new Date())) : null; }
+function shownAge(p){ const b = birthOf(p); return b ? Math.floor(yearsBetween(b, today())) : null; }
+// 自分が myAge 歳になった時点の家族の年齢（未誕生なら null）
+function famAgeAt(f, myAge){
+  const fb = birthOf(f), mb = myBirth();
+  if (!fb || !mb) return null;
+  const a = myAge + yearsBetween(fb, mb);
+  return a < 0 ? null : Math.floor(a + 1e-9);
+}
+function yearAt(age){ const b = myBirth(); return b ? b.getFullYear() + age : null; }
+// 月はカレンダーの月（1〜12）。age歳の間（誕生日〜次の誕生日）にくるその月として扱う
+function birthMonth(){ const b = myBirth(); return b ? b.getMonth() : 0; }
+function monthOffset(m){ return m ? ((m - 1 - birthMonth()) % 12 + 12) % 12 : 0; }
+function calYear(age, m){ const y = yearAt(age); return y === null ? null : y + (m - 1 < birthMonth() ? 1 : 0); }
+function whenText(it){
+  let t = `${it.age}歳` + (it.month ? ` ${it.month}月` : '') + (it.tentative ? 'ごろ' : '');
+  const y = it.month ? calYear(it.age, it.month) : yearAt(it.age);
+  if (y !== null) t += ` ・ ${y}年` + (it.month ? `${it.month}月` : '');
+  return t;
+}
+function relText(age){
+  const c = currentAge(); if (c === null) return '';
+  const d = age - Math.floor(c);
+  return d === 0 ? 'いまの年齢' : d > 0 ? `あと${d}年` : `${-d}年前`;
+}
+
+/* =========================================================
+   時間軸の座標計算（表示位置・スクロールと分離）
+   ========================================================= */
+const zoomDef = () => ZOOMS[data.settings.zoom];
+const ppy = () => zoomDef().ppy;
+const ageToX = (a, p = ppy()) => PADL + (a - data.settings.minAge) * p;
+const xToAge = (x, p = ppy()) => (x - PADL) / p + data.settings.minAge;
+const totalWidth = (p = ppy()) => PADL + (data.settings.maxAge - data.settings.minAge + 1) * p + PADR;
+const tickStep = p => p < 10 ? 10 : p < 20 ? 5 : p < 40 ? 2 : 1;
+const isMonthZoom = () => ppy() >= MONTH_PPY;
+
+// 項目の時間軸上の位置（年齢単位）。月の指定があればその月の位置。縮尺によって変わらない
+function itemPos(it){ return it.age + (it.month ? monthOffset(it.month) / 12 : 0); }
+function textW(s, fs = 13){ let w = 0; for (const ch of s) w += /[\x00-\xff]/.test(ch) ? fs * 0.58 : fs; return w; }
+
+// 吹き出しの設定：段数・最大幅・高さ（縮尺ごと）
+const BUBBLE = {
+  overview:{ levels:2, max:150, h:28 },
+  normal:  { levels:3, max:180, h:28 },
+  detail:  { levels:3, max:230, h:44 },
+  month:   { levels:3, max:230, h:44 }
+};
+const RULER_H = 48;
+// 現在地を歩く人（右＝未来へ向かって歩く）
+function walkerSVG(x, y){
+  const st = 'stroke:var(--now);stroke-width:2.6;stroke-linecap:round;fill:none';
+  return `<svg class="walker" style="left:${x}px;top:${y}px" width="30" height="40" viewBox="0 0 24 32" aria-hidden="true">
+    <g class="body">
+      <g class="arm a2" style="opacity:.5"><line x1="12" y1="11" x2="12" y2="17.5" style="${st}"/></g>
+      <g class="leg l2" style="opacity:.5"><line x1="11" y1="18" x2="11" y2="30" style="${st}"/></g>
+      <line x1="12.6" y1="9.5" x2="11" y2="18.5" style="${st}"/>
+      <g class="leg l1"><line x1="11" y1="18" x2="11" y2="30" style="${st}"/></g>
+      <g class="arm a1"><line x1="12" y1="11" x2="12" y2="17.5" style="${st}"/></g>
+      <circle cx="14" cy="5" r="3.8" style="fill:var(--now)"/>
+    </g></svg>`;
+}
+const TRACK_Y = 54;         // 丸を並べる線の位置（上は歩く人のぶん空ける）
+const PIN_MERGE = 9;         // これより近い丸は1つにまとめる（px）
+
+function layoutItems(){
+  const m = zoomDef().mode, s = data.settings, cfg = BUBBLE[m];
+  const list = data.items
+    .filter(it => it.age >= s.minAge && it.age <= s.maxAge)
+    .map(it => ({ it, x:ageToX(itemPos(it)) }));
+
+  // 丸：近いものはまとめて件数を表示
+  const pins = [];
+  for (const e of [...list].sort((a,b) => a.x - b.x)){
+    const last = pins[pins.length - 1];
+    if (last && e.x - last.x < PIN_MERGE) last.items.push(e.it);
+    else pins.push({ x:e.x, items:[e.it] });
+  }
+
+  // 吹き出し：重要な項目を優先して、空いている段に置く。どの段にも置けなければ丸だけ
+  const order = list
+    .filter(e => m !== 'overview' || e.it.important)
+    .sort((a,b) => (b.it.important?1:0) - (a.it.important?1:0) || a.x - b.x);
+  const bubbles = [];
+  for (const e of order){
+    const w = Math.min(cfg.max, textW(e.it.title) + 24 + (e.it.goal ? 32 : 0));
+    const bx = e.x - 12;
+    for (let L = 0; L < cfg.levels; L++){
+      const by = TRACK_Y + 16 + L * (cfg.h + 10);
+      const clash = bubbles.some(q =>
+        (q.L === L && q.x < bx + w + 6 && bx < q.x + q.w + 6) ||          // 同じ段で重なる
+        (q.L < L && q.x - 4 <= e.x && e.x <= q.x + q.w + 4) ||            // 自分の線が下の吹き出しを横切る
+        (q.L > L && bx - 4 <= q.ax && q.ax <= bx + w + 4));               // 他の線を自分がふさぐ
+      if (!clash){ bubbles.push({ it:e.it, ax:e.x, x:bx, y:by, w, h:cfg.h, L }); break; }
+    }
+  }
+  const bottom = TRACK_Y + 16 + cfg.levels * (cfg.h + 10);
+  return { pins, bubbles, bottom };
+}
+
+/* =========================================================
+   描画
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sc = $('#scroller'), wrapEl = $('#wrap');
+
+function render(){ renderBoard(); renderTimeline(); renderBar(); renderSheet(); }
+
+// 大切な言葉と、これからの目標
+function renderBoard(){
+  const b = $('#board');
+  if (!data.settings.configured){ b.innerHTML = ''; return; }
+  const c = currentAge(), now = c === null ? 0 : Math.floor(c);
+  const goals = data.items.filter(it => it.goal && it.age >= now)
+    .sort((p,q) => itemPos(p) - itemPos(q));
+  b.innerHTML =
+    `<button class="motto" data-action="edit-motto">${(data.motto.title || data.motto.body)
+      ? (data.motto.title ? `<span class="mt">${esc(data.motto.title)}</span>` : '') + (data.motto.body ? `<span class="mb">${esc(data.motto.body)}</span>` : '')
+      : '<span class="ph">＋ 大切にしている言葉を書く</span>'}</button>` +
+    (goals.length ? `<div class="goals">${goals.map(it => {
+      const left = it.age - now;
+      return `<button class="goal" data-action="goto-item" data-id="${it.id}"><b>${it.age}歳${it.month ? it.month + '月' : ''}${it.tentative ? 'ごろ' : ''}までに</b>${esc(it.title)}<small>${left > 0 ? `あと${left}年` : 'いまの年齢'}</small></button>`;
+    }).join('')}</div>` : '');
+}
+
+function renderTimeline(){
+  const s = data.settings, z = zoomDef(), p = z.ppy, m = z.mode, W = totalWidth();
+  const cur = currentAge(), step = tickStep(p);
+
+  // 目盛り
+  let ruler = '';
+  const monthZoom = p >= MONTH_PPY, bm = birthMonth();
+  for (let a = s.minAge; a <= s.maxAge; a++){
+    const x = ageToX(a);
+    if (a % step === 0){
+      const y = yearAt(a);
+      ruler += `<div class="tick major" style="left:${x}px">${y !== null ? `<i>${y}${monthZoom ? `年${bm+1}月` : ''}</i>` : ''}<b>${a}<small>歳</small></b></div>`;
+    } else if (p >= 10){
+      ruler += `<div class="tick" style="left:${x}px"></div>`;
+    }
+    if (monthZoom && a < s.maxAge + 1){
+      for (let k = 1; k < 12; k++){
+        ruler += `<div class="tick mo" style="left:${ageToX(a + k/12)}px"><b>${(bm + k) % 12 + 1}<small>月</small></b></div>`;
+      }
+    }
+  }
+
+  // 項目
+  const { pins, bubbles, bottom } = layoutItems();
+  const isPast = it => cur !== null && itemPos(it) + (it.month ? 1/12 : 1) <= cur;
+  const nowX = cur !== null ? Math.min(Math.max(ageToX(cur), 0), W) : null;
+  let items = nowX === null
+    ? `<div class="track todo" style="top:${TRACK_Y}px;left:0;width:${W}px"></div>`
+    : `<div class="track done" style="top:${TRACK_Y}px;left:0;width:${nowX}px"></div><div class="track todo" style="top:${TRACK_Y}px;left:${nowX}px;width:${W - nowX}px"></div>`;
+  for (const b of bubbles){
+    const it = b.it;
+    const cls = ['bub', it.important?'imp':'', it.tentative?'tent':'', isPast(it)?'past':'', view.flashId===it.id?'flash':''].join(' ');
+    let inner = `<span class="tt">${it.goal ? '<span class="gtag">目標</span>' : ''}${esc(it.title)}</span>`;
+    if (b.h > 30) inner += `<span class="sub">${it.memo ? esc(it.memo.split('\n')[0]) : `${it.age}歳${it.month ? ` ${it.month}月` : ''}${it.tentative?'ごろ':''}`}</span>`;
+    items += `<div class="stem" style="left:${b.ax}px;top:${TRACK_Y + 6}px;height:${b.y - TRACK_Y - 6}px"></div>`;
+    items += `<button class="${cls}" data-action="open-item" data-id="${it.id}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px">${inner}</button>`;
+  }
+  for (const pn of pins){
+    const its = pn.items, n = its.length;
+    const imp = its.some(i => i.important), tent = its.every(i => i.tentative), past = its.every(isPast);
+    const flash = its.some(i => i.id === view.flashId);
+    const cls = ['pin', n > 1 ? 'multi' : '', imp?'imp':'', tent?'tent':'', past?'past':'', flash?'flash':''].join(' ');
+    items += n === 1
+      ? `<button class="${cls}" data-action="open-item" data-id="${its[0].id}" aria-label="${esc(its[0].title)}" style="left:${pn.x}px;top:${TRACK_Y}px"></button>`
+      : `<button class="${cls}" data-action="open-age" data-age="${its[0].age}" aria-label="${n}件" style="left:${pn.x}px;top:${TRACK_Y}px">${n}</button>`;
+  }
+  if (!data.items.length && s.configured){
+    const ex = cur !== null ? Math.max(ageToX(cur) + 14, 20) : 40;
+    items += `<div class="empty" style="left:${ex}px;top:${TRACK_Y + 24}px">年齢の位置をタップするか、<br>「＋ 追加」から記録をはじめましょう</div>`;
+  }
+  const itemsH = bottom + 40;
+
+  // 縦の補助線（背景グラデーションで描画）
+  const off = PADL + ((step - (s.minAge % step)) % step) * p;
+  let bg = `background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px)`;
+  let bgSize = `${p*step}px 100%`, bgPos = `${off}px 0`;
+  if (p >= 26 && step > 1){ bg += `,linear-gradient(to right,var(--grid2) 1px,transparent 1px)`; bgSize += `,${p}px 100%`; bgPos += `,${PADL}px 0`; }
+  if (monthZoom){ bg += `,linear-gradient(to right,var(--grid2) 1px,transparent 1px)`; bgSize += `,${p/12}px 100%`; bgPos += `,${PADL}px 0`; }
+
+  // 家族
+  let fam = '';
+  const vis = data.family.filter(f => f.visible !== false);
+  if (data.ui.showFamily && vis.length && myBirth()){
+    fam = `<div class="fam">` + vis.map(f => {
+      let cells = '';
+      for (let a = s.minAge; a <= s.maxAge; a++){
+        if (a % step) continue;
+        const fa = famAgeAt(f, a);
+        if (fa !== null) cells += `<span class="fa" style="left:${ageToX(a)}px">${fa}</span>`;
+      }
+      return `<div class="flane"><span class="fname">${esc(f.name)}</span>${cells}</div>`;
+    }).join('') + `</div>`;
+  }
+
+  // 現在地・過去・選択中の年齢
+  let overlay = '';
+  if (cur !== null && cur >= s.minAge && cur <= s.maxAge + 1){
+    overlay += `<div class="past" style="width:${ageToX(cur)}px"></div>`;
+    const nx = ageToX(cur), trackTop = RULER_H + TRACK_Y;
+    // 現在地の線は歩く人の足もとから下へ。ラベルは目盛りの上に
+    overlay += `<div class="now" style="left:${nx}px;top:${trackTop}px"></div>`;
+    overlay += `<div class="now nowlabel" style="left:${nx}px;top:0;bottom:auto;height:${RULER_H}px"><span>いま ${Math.floor(cur)}歳</span></div>`;
+    overlay += walkerSVG(nx - 14, trackTop - 38);
+  }
+  if (view.selAge !== null){
+    overlay += `<div class="selband" style="left:${ageToX(view.selAge)}px;width:${Math.max(p,3)}px"></div>`;
+  }
+
+  wrapEl.style.width = W + 'px';
+  wrapEl.style.minHeight = sc.clientHeight + 'px';
+  wrapEl.innerHTML =
+    `<div class="ruler" data-zone="1">${ruler}</div>` +
+    `<div class="items" data-zone="1" style="min-height:${itemsH}px;${bg};background-size:${bgSize};background-position:${bgPos};background-repeat:repeat">${items}</div>` +
+    fam + overlay;
+
+  const nl = $('#nowLabel');
+  nl.textContent = cur !== null ? `いま ${Math.floor(cur)}歳${data.settings.birthMode==='age'?'（概算）':''}` : '';
+}
+
+function renderBar(){
+  const z = data.settings.zoom;
+  $('#zLabel').textContent = ZOOMS[z].label;
+  $('#zOut').disabled = z <= 0;
+  $('#zIn').disabled = z >= ZOOMS.length - 1;
+  const ft = $('#famToggle');
+  const on = data.family.length > 0 && data.ui.showFamily;
+  ft.classList.toggle('on', on);
+  ft.classList.toggle('off', data.family.length > 0 && !data.ui.showFamily);
+  ft.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+/* =========================================================
+   スクロール・縮尺
+   ========================================================= */
+function scrollToAge(age, ratio = 0.35, smooth = false){
+  const left = Math.max(0, ageToX(age) - sc.clientWidth * ratio);
+  if (smooth && sc.scrollTo) sc.scrollTo({ left, behavior:'smooth' }); else sc.scrollLeft = left;
+}
+function scrollToNow(smooth){
+  const c = currentAge();
+  if (c === null) { sc.scrollLeft = 0; return; }
+  scrollToAge(c, 0.35, smooth);
+}
+function ensureVisible(age){
+  const x = ageToX(age);
+  if (x < sc.scrollLeft + 20 || x + ppy() > sc.scrollLeft + sc.clientWidth - 20) scrollToAge(age, 0.35, true);
+}
+// anchorX：画面上で位置を固定したい点（省略時は中央）
+function zoomBy(dir, anchorX){
+  const z = data.settings.zoom + dir;
+  if (z < 0 || z >= ZOOMS.length) return;
+  const ax = anchorX ?? sc.clientWidth / 2;
+  const age = xToAge(sc.scrollLeft + ax);
+  data.settings.zoom = z;
+  save();
+  renderTimeline(); renderBar();
+  sc.scrollLeft = ageToX(age) - ax;
+}
+
+/* =========================================================
+   シート（詳細・編集・設定）
+   ========================================================= */
+function openSheet(sh){ view.sheet = sh; render(); }
+function closeSheet(){ view.sheet = null; view.selAge = null; render(); }
+
+function renderSheet(){
+  const root = $('#sheetRoot');
+  if (!view.sheet){ root.innerHTML = ''; return; }
+  const scrollTop = root.querySelector('.sheet')?.scrollTop || 0;
+  root.innerHTML = `<div class="ov-bg" data-bg="1"><div class="sheet" role="dialog" aria-modal="true">${sheetHTML()}</div></div>`;
+  root.querySelector('.sheet').scrollTop = scrollTop;
+  updYear();
+}
+function sheetHTML(){
+  const sh = view.sheet;
+  switch (sh.kind){
+    case 'setup':       return setupHTML();
+    case 'settings':    return settingsHTML();
+    case 'item':        return itemViewHTML(sh);
+    case 'edit':        return itemFormHTML(sh);
+    case 'age':         return ageHTML(sh);
+    case 'family-list': return famListHTML();
+    case 'family':      return famFormHTML(sh);
+    case 'motto':       return mottoHTML();
+  }
+  return '';
+}
+const closeBtn = `<button class="x" data-action="close" aria-label="閉じる">×</button>`;
+
+function mottoHTML(){
+  return `<div class="sh-head"><h3>大切にしている言葉</h3>${closeBtn}</div>
+    <div class="field"><label class="lbl" for="mottoTitle">タイトル</label>
+      <input type="text" id="mottoTitle" maxlength="40" value="${esc(data.motto.title)}" placeholder="例：急がなくていい。でも、止まらない。"></div>
+    <div class="field"><label class="lbl" for="mottoBody">文章</label>
+      <textarea id="mottoBody" rows="5" maxlength="400" placeholder="この言葉にこめた思い、なぜ大切にしているか など">${esc(data.motto.body)}</textarea>
+      <p class="hint">画面の上にいつも表示されます（文章は2行まで。タップで全文を確認・編集できます）。</p></div>
+    <div class="actions"><button class="btn" data-action="close">キャンセル</button><button class="btn primary" data-action="save-motto">保存</button></div>`;
+}
+
+function famAtHTML(age){
+  if (!data.family.length || !myBirth()) return '';
+  return `<div class="famat"><span class="lbl">そのとき家族は</span>` + data.family.map(f => {
+    const a = famAgeAt(f, age);
+    return `<span class="fchip">${esc(f.name)} <b>${a === null ? 'まだ生まれていない' : a + '歳'}</b></span>`;
+  }).join('') + `</div>`;
+}
+
+function itemViewHTML(sh){
+  const it = data.items.find(x => x.id === sh.id);
+  if (!it) return `<div class="sh-head"><h3>見つかりません</h3>${closeBtn}</div>`;
+  const rel = relText(it.age);
+  return `<div class="sh-head">${it.goal?`<span class="badge imp">目標 ・ ${it.age}歳${it.month ? it.month + '月' : ''}までに</span>`:''}${it.important?'<span class="badge imp">重要</span>':''}${closeBtn}</div>
+    <h2 class="ititle">${esc(it.title)}</h2>
+    <div class="meta">${whenText(it)}${rel?` ・ ${rel}`:''}</div>
+    ${it.memo ? `<p class="memo-full">${esc(it.memo)}</p>` : ''}
+    ${famAtHTML(it.age)}
+    <div class="actions">
+      <button class="btn" data-action="open-age" data-age="${it.age}">${it.age}歳の一覧</button>
+      <button class="btn primary" data-action="edit-item" data-id="${it.id}">編集</button>
+    </div>`;
+}
+
+function itemFormHTML(sh){
+  const s = data.settings;
+  const it = sh.id ? data.items.find(x => x.id === sh.id) : null;
+  const c = currentAge();
+  const v = it || { age: sh.age ?? Math.min(s.maxAge, Math.max(s.minAge, c !== null ? Math.floor(c) : s.minAge)), month:null, title:'', memo:'', important:false, tentative:false };
+  const bm = birthMonth();
+  let monthOpts = `<option value="">月は指定しない</option>`;
+  for (let k = 0; k < 12; k++){
+    const mo = (bm + k) % 12 + 1;
+    monthOpts += `<option value="${mo}" ${v.month===mo?'selected':''}>${mo}月${k===0?'（誕生月）':''}</option>`;
+  }
+  return `<div class="sh-head"><h3>${it ? '項目を編集' : '項目を追加'}</h3>${closeBtn}</div>
+    <div class="field"><label class="lbl" for="iAge">年齢</label>
+      <div class="inline">
+        <button class="step" data-action="age-step" data-d="-1" aria-label="1歳戻す">−</button>
+        <input type="number" id="iAge" inputmode="numeric" min="${s.minAge}" max="${s.maxAge}" value="${v.age}">
+        <button class="step" data-action="age-step" data-d="1" aria-label="1歳進める">＋</button>
+      </div>
+      <div class="inline" style="margin-top:8px">
+        <select id="iMonth" style="width:auto;min-width:150px" aria-label="月">${monthOpts}</select>
+        <span class="yr" id="iYear"></span>
+      </div>
+      <label class="chk"><input type="checkbox" id="iTent" ${v.tentative?'checked':''}>年齢はおおよそ（仮）</label>
+    </div>
+    <div class="field"><label class="lbl" for="iTitle">タイトル</label>
+      <input type="text" id="iTitle" maxlength="60" value="${esc(v.title)}" placeholder="例：家族で北海道を旅する"></div>
+    <div class="field"><label class="lbl" for="iMemo">メモ</label>
+      <textarea id="iMemo" rows="4" placeholder="思い・理由・具体的なことなど">${esc(v.memo)}</textarea></div>
+    <label class="chk"><input type="checkbox" id="iGoal" ${v.goal?'checked':''}>目標として上に表示（「〇歳までに」）</label>
+    <label class="chk"><input type="checkbox" id="iImp" ${v.important?'checked':''}>重要（人生全体を見渡すときにも表示）</label>
+    <div class="actions">
+      ${it ? `<button class="btn danger" data-action="delete-item" data-id="${it.id}">削除</button>` : ''}
+      <button class="btn" data-action="${it ? 'open-item' : 'close'}" data-id="${it ? it.id : ''}">キャンセル</button>
+      <button class="btn primary" data-action="save-item" data-id="${it ? it.id : ''}">保存</button>
+    </div>`;
+}
+function updYear(){
+  const i = $('#iAge'), y = $('#iYear');
+  if (!i || !y) return;
+  const a = parseInt(i.value, 10), mo = parseInt(($('#iMonth') || {}).value, 10);
+  if (isNaN(a) || yearAt(a) === null){ y.textContent = ''; return; }
+  const when = mo ? `${calYear(a, mo)}年${mo}月` : `${yearAt(a)}年〜`;
+  y.textContent = when + (relText(a) ? `・${relText(a)}` : '');
+}
+
+function ageHTML(sh){
+  const s = data.settings, a = sh.age, y = yearAt(a), c = currentAge();
+  const items = data.items.filter(x => x.age === a)
+    .sort((p,q) => (p.month ? monthOffset(p.month) : -1) - (q.month ? monthOffset(q.month) : -1)
+      || (q.important?1:0) - (p.important?1:0) || (p.createdAt||0) - (q.createdAt||0));
+  const isNow = c !== null && Math.floor(c) === a;
+  return `<div class="sh-head"><h3>${a}歳${y!==null?`<small>${y}年</small>`:''}</h3>
+      ${isNow ? '<span class="badge now">いまここ</span>' : ''}
+      <div class="nav">
+        <button class="btn sm" data-action="open-age" data-age="${a-1}" ${a<=s.minAge?'disabled':''} aria-label="前の年齢">‹</button>
+        <button class="btn sm" data-action="open-age" data-age="${a+1}" ${a>=s.maxAge?'disabled':''} aria-label="次の年齢">›</button>
+      </div>${closeBtn}</div>
+    ${!isNow && relText(a) ? `<div class="meta">${relText(a)}</div>` : ''}
+    ${famAtHTML(a)}
+    ${items.length ? `<div class="list">${items.map(it => {
+      return `<button class="li" data-action="open-item" data-id="${it.id}"><span class="ic ${it.important?'imp':''}"></span><span class="tt">${esc(it.title)}</span><span class="s">${[it.month ? it.month + '月' : '', it.important ? '重要' : ''].filter(Boolean).join(' ・ ')}</span></button>`; }).join('')}</div>`
+      : `<p class="empty-s">まだ何も登録されていません</p>`}
+    <div class="actions"><button class="btn primary" data-action="new-item" data-age="${a}">＋ ${a}歳に追加</button></div>`;
+}
+
+function birthFields(px, o, label){
+  const m = o.birthMode || 'birth';
+  const age = m === 'age' ? shownAge(o) : null;
+  return `<div class="field"><span class="lbl">${label}</span>
+    <div class="seg">
+      <label><input type="radio" name="${px}bm" value="birth" ${m==='birth'?'checked':''}><span>生年月日</span></label>
+      <label><input type="radio" name="${px}bm" value="age" ${m==='age'?'checked':''}><span>現在の年齢</span></label>
+    </div>
+    <div data-bm="${px}" data-show="birth" ${m!=='birth'?'hidden':''}><input type="date" id="${px}Birth" value="${esc(o.birth||'')}" max="${iso(today())}"></div>
+    <div data-bm="${px}" data-show="age" ${m!=='age'?'hidden':''}>
+      <div class="inline"><input type="number" id="${px}Age" inputmode="numeric" min="0" max="120" value="${age ?? ''}"><span>歳</span></div>
+      <p class="hint">生年月日がわからないときの概算です。年を重ねても自動で進みます。</p>
+    </div></div>`;
+}
+function readBirth(px, old){
+  const m = (document.querySelector(`input[name="${px}bm"]:checked`) || {}).value || 'birth';
+  if (m === 'birth'){
+    const v = $('#'+px+'Birth').value, d = pd(v);
+    if (!d) return { err:'生年月日を入力してください' };
+    if (d > today()) return { err:'生年月日が未来の日付です' };
+    return { birthMode:'birth', birth:v, ageAtBase:null, baseDate:'' };
+  }
+  const n = parseInt($('#'+px+'Age').value, 10);
+  if (isNaN(n) || n < 0 || n > 120) return { err:'年齢は0〜120で入力してください' };
+  if (old && old.birthMode === 'age' && shownAge(old) === n)
+    return { birthMode:'age', birth:'', ageAtBase:old.ageAtBase, baseDate:old.baseDate };
+  return { birthMode:'age', birth:'', ageAtBase:n, baseDate:iso(today()) };
+}
+function rangeFields(s){
+  return `<div class="field"><span class="lbl">表示する人生の範囲</span>
+    <div class="range"><input type="number" id="rMin" inputmode="numeric" min="0" max="119" value="${s.minAge}"><span>歳 〜</span>
+    <input type="number" id="rMax" inputmode="numeric" min="1" max="120" value="${s.maxAge}"><span>歳</span></div></div>`;
+}
+function readRange(){
+  const mn = parseInt($('#rMin').value, 10), mx = parseInt($('#rMax').value, 10);
+  if (isNaN(mn) || isNaN(mx) || mn < 0 || mx > 120 || mn >= mx) return { err:'範囲は0〜120歳の間で、開始＜終了になるように入力してください' };
+  return { minAge:mn, maxAge:mx };
+}
+
+function setupHTML(){
+  const s = data.settings;
+  return `<div class="sh-head"><h3>はじめに</h3></div>
+    <p class="intro">自分の人生をひとつの時間軸で見渡すためのノートです。<br>まず、あなたの年齢を教えてください。</p>
+    ${birthFields('m', s, 'あなたの生年月日 または 現在の年齢')}
+    ${rangeFields(s)}
+    <div class="field"><label class="lbl" for="sZoom">はじめの縮尺</label>
+      <select id="sZoom">${ZOOMS.map((z,i) => `<option value="${i}" ${i===s.zoom?'selected':''}>${z.label}</option>`).join('')}</select></div>
+    <label class="chk"><input type="checkbox" id="sSample">サンプルの項目を入れて試す（あとで削除できます）</label>
+    <div class="actions"><button class="btn primary" data-action="finish-setup">はじめる</button></div>`;
+}
+function settingsHTML(){
+  const s = data.settings;
+  const hidden = data.items.filter(x => x.age < s.minAge || x.age > s.maxAge).length;
+  return `<div class="sh-head"><h3>設定</h3>${closeBtn}</div>
+    ${birthFields('m', s, 'あなたの生年月日 または 現在の年齢')}
+    ${rangeFields(s)}
+    ${hidden ? `<p class="hint" style="margin:-8px 0 14px">範囲外のため表示されていない項目が${hidden}件あります（削除はされていません）</p>` : ''}
+    <div class="actions" style="margin-top:0"><button class="btn primary" data-action="save-settings">保存</button></div>
+    <div class="sec" style="margin-top:22px">
+      <span class="lbl">データ</span>
+      <p class="hint" style="margin:0 0 10px">データはこのブラウザの中だけに保存されています。ときどき書き出しておくと安心です。</p>
+      <div class="actions" style="margin-top:0">
+        <button class="btn" data-action="export">書き出し</button>
+        <label class="btn fileb">読み込み<input type="file" id="importFile" accept="application/json,.json"></label>
+      </div>
+      <div class="actions">
+        <button class="btn" data-action="add-sample">サンプルを追加</button>
+        <button class="btn danger" data-action="reset-all">すべて削除</button>
+      </div>
+    </div>`;
+}
+
+function famListHTML(){
+  const list = data.family.map(f => {
+    const a = shownAge(f);
+    return `<div class="li" style="cursor:default">
+      <span class="tt">${esc(f.name)}</span><span class="s">${a !== null ? `いま${a}歳${f.birthMode==='age'?'（概算）':''}` : ''}</span>
+      <button class="btn sm" data-action="toggle-fam-vis" data-id="${f.id}">${f.visible===false?'非表示中':'表示中'}</button>
+      <button class="btn sm" data-action="edit-family" data-id="${f.id}">編集</button></div>`;
+  }).join('');
+  return `<div class="sh-head"><h3>家族</h3>${closeBtn}</div>
+    <p class="hint" style="margin:0 0 12px">登録した家族の年齢が、あなたの時間軸の下に並んで表示されます。</p>
+    ${list ? `<div class="list">${list}</div>` : '<p class="empty-s">まだ登録されていません</p>'}
+    <div class="actions"><button class="btn primary" data-action="new-family">＋ 家族を追加</button></div>`;
+}
+function famFormHTML(sh){
+  const f = sh.id ? data.family.find(x => x.id === sh.id) : null;
+  const v = f || { name:'', birthMode:'birth', birth:'', ageAtBase:null, baseDate:'' };
+  return `<div class="sh-head"><h3>${f ? '家族を編集' : '家族を追加'}</h3>${closeBtn}</div>
+    <div class="field"><label class="lbl" for="fName">表示名・続柄</label>
+      <input type="text" id="fName" maxlength="20" value="${esc(v.name)}" placeholder="例：母、長女 さくら"></div>
+    ${birthFields('f', v, '生年月日 または 現在の年齢')}
+    <div class="actions">
+      ${f ? `<button class="btn danger" data-action="delete-family" data-id="${f.id}">削除</button>` : ''}
+      <button class="btn" data-action="open-family">キャンセル</button>
+      <button class="btn primary" data-action="save-family" data-id="${f ? f.id : ''}">保存</button>
+    </div>`;
+}
+
+/* =========================================================
+   操作
+   ========================================================= */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+function addSample(){
+  const c = currentAge() !== null ? Math.floor(currentAge()) : 30;
+  const s = data.settings, now = Date.now();
+  const raw = [
+    ['からだを大切にする', c, null, true, false, '睡眠と食事をおろそかにしない。'],
+    ['家族と過ごす時間を優先する', c+5, null, true, false, ''],
+    ['フルマラソンを完走する', c+2, 3, false, false, ''],
+    ['ギターで1曲弾き語りする', c+1, null, false, false, ''],
+    ['海外で1か月暮らしてみる', c+4, null, false, true, 'どこの国かはまだ決めていない。'],
+    ['仕事の区切り', 65, null, true, true, ''],
+    ['ゆっくり日本一周', 67, null, false, true, ''],
+    ['小さな畑を持つ', 70, null, false, false, '']
+  ];
+  if (c > 23) raw.push(['学校を卒業', 22, 3, false, false, '']);
+  if (c > 27) raw.push(['はじめての転職', c-3, null, false, false, '']);
+  raw.forEach(([title,age,month,important,tentative,memo], i) => {
+    if (age < s.minAge || age > s.maxAge) return;
+    const goal = ['フルマラソンを完走する', '海外で1か月暮らしてみる', '小さな畑を持つ'].includes(title);
+    data.items.push({ id:uid()+i, title, age, month, important, goal, tentative, memo, createdAt:now+i, updatedAt:now+i });
+  });
+  if (!data.motto.title && !data.motto.body)
+    data.motto = { title:'急がなくていい。でも、止まらない。', body:'人と比べず、自分の歩幅で。立ち止まっても、また歩き出せばいい。' };
+  if (!data.family.length){
+    data.family.push({ id:uid()+'m', name:'母', birthMode:'age', birth:'', ageAtBase:c+28, baseDate:iso(today()), visible:true });
+    data.family.push({ id:uid()+'f', name:'父', birthMode:'age', birth:'', ageAtBase:c+31, baseDate:iso(today()), visible:true });
+  }
+}
+
+const actions = {
+  close(){ closeSheet(); },
+  'zoom-in'(){ zoomBy(1); },
+  'zoom-out'(){ zoomBy(-1); },
+  'go-now'(){ scrollToNow(true); },
+  'toggle-family'(){
+    if (!data.family.length){ openSheet({ kind:'family-list' }); return; }
+    data.ui.showFamily = !data.ui.showFamily; save(); render();
+    toast(data.ui.showFamily ? '家族を表示' : '家族を非表示');
+  },
+  'open-family'(){ openSheet({ kind:'family-list' }); },
+  'open-settings'(){ openSheet({ kind:'settings' }); },
+  'edit-motto'(){
+    openSheet({ kind:'motto' });
+    setTimeout(() => { const t = $('#mottoTitle'); if (t && window.matchMedia('(pointer:fine)').matches) t.focus(); }, 60);
+  },
+  'save-motto'(){
+    data.motto = { title:$('#mottoTitle').value.trim(), body:$('#mottoBody').value.trim() };
+    save(); closeSheet();
+  },
+  'goto-item'(el){
+    const it = data.items.find(x => x.id === el.dataset.id);
+    if (!it) return;
+    view.flashId = it.id; view.selAge = it.age;
+    openSheet({ kind:'item', id:it.id });
+    scrollToAge(itemPos(it), 0.35, true);
+    setTimeout(() => { view.flashId = null; }, 1300);
+  },
+
+  'new-item'(el){
+    const a = el.dataset.age;
+    openSheet({ kind:'edit', id:null, age: a !== undefined && a !== '' ? +a : undefined });
+    setTimeout(() => { const t = $('#iTitle'); if (t && window.matchMedia('(pointer:fine)').matches) t.focus(); }, 60);
+  },
+  'open-item'(el){
+    const it = data.items.find(x => x.id === el.dataset.id);
+    if (!it) return;
+    view.selAge = it.age; openSheet({ kind:'item', id:it.id });
+  },
+  'edit-item'(el){ openSheet({ kind:'edit', id:el.dataset.id }); },
+  'open-age'(el){
+    const a = +el.dataset.age, s = data.settings;
+    if (isNaN(a) || a < s.minAge || a > s.maxAge) return;
+    view.selAge = a; openSheet({ kind:'age', age:a }); ensureVisible(a);
+  },
+  'age-step'(el){
+    const i = $('#iAge'), s = data.settings;
+    i.value = clamp((parseInt(i.value,10) || 0) + (+el.dataset.d), s.minAge, s.maxAge);
+    updYear();
+  },
+  'save-item'(el){
+    const s = data.settings;
+    const age = parseInt($('#iAge').value, 10);
+    if (isNaN(age) || age < s.minAge || age > s.maxAge) return toast(`年齢は${s.minAge}〜${s.maxAge}で入力してください`);
+    const title = $('#iTitle').value.trim();
+    if (!title) return toast('タイトルを入力してください');
+    const month = parseInt($('#iMonth').value, 10) || null;
+    const fields = { age, month, title, memo:$('#iMemo').value.trim(), important:$('#iImp').checked, goal:$('#iGoal').checked, tentative:$('#iTent').checked, updatedAt:Date.now() };
+    let id = el.dataset.id;
+    if (id){ Object.assign(data.items.find(x => x.id === id), fields); }
+    else { id = uid(); data.items.push(Object.assign({ id, createdAt:Date.now() }, fields)); }
+    save();
+    view.sheet = null; view.selAge = null; view.flashId = id;
+    render(); ensureVisible(age);
+    if (zoomDef().mode === 'overview' && !fields.important) toast('保存しました（この縮尺では重要な項目だけ表示されます）');
+    else toast('保存しました');
+    setTimeout(() => { view.flashId = null; }, 1300);
+  },
+  'delete-item'(el){
+    const it = data.items.find(x => x.id === el.dataset.id);
+    if (!it) return;
+    if (!confirm(`「${it.title}」を削除しますか？\nこの操作は取り消せません。`)) return;
+    data.items = data.items.filter(x => x.id !== it.id);
+    save(); closeSheet(); toast('削除しました');
+  },
+
+  'new-family'(){ openSheet({ kind:'family', id:null }); },
+  'edit-family'(el){ openSheet({ kind:'family', id:el.dataset.id }); },
+  'toggle-fam-vis'(el){
+    const f = data.family.find(x => x.id === el.dataset.id);
+    if (f){ f.visible = f.visible === false; save(); render(); }
+  },
+  'save-family'(el){
+    const name = $('#fName').value.trim();
+    if (!name) return toast('表示名を入力してください');
+    const old = el.dataset.id ? data.family.find(x => x.id === el.dataset.id) : null;
+    const b = readBirth('f', old);
+    if (b.err) return toast(b.err);
+    if (old) Object.assign(old, { name }, b);
+    else data.family.push(Object.assign({ id:uid(), name, visible:true }, b));
+    data.ui.showFamily = true;
+    save(); openSheet({ kind:'family-list' }); toast('保存しました');
+  },
+  'delete-family'(el){
+    const f = data.family.find(x => x.id === el.dataset.id);
+    if (!f || !confirm(`「${f.name}」を削除しますか？`)) return;
+    data.family = data.family.filter(x => x.id !== f.id);
+    save(); openSheet({ kind:'family-list' }); toast('削除しました');
+  },
+
+  'finish-setup'(){
+    const b = readBirth('m', null); if (b.err) return toast(b.err);
+    const r = readRange(); if (r.err) return toast(r.err);
+    Object.assign(data.settings, b, r, { zoom: parseInt($('#sZoom').value, 10) || 0, configured:true });
+    if ($('#sSample').checked) addSample();
+    save(); view.sheet = null; render(); scrollToNow(false);
+  },
+  'save-settings'(){
+    const b = readBirth('m', data.settings); if (b.err) return toast(b.err);
+    const r = readRange(); if (r.err) return toast(r.err);
+    Object.assign(data.settings, b, r);
+    save(); view.sheet = null; render(); scrollToNow(false); toast('保存しました');
+  },
+  'add-sample'(){ addSample(); save(); closeSheet(); toast('サンプルを追加しました'); },
+  'reset-all'(){
+    if (!confirm('すべての項目・家族・設定を削除します。\nこの操作は取り消せません。よろしいですか？')) return;
+    data = defaultData(); save(); view.selAge = null; openSheet({ kind:'setup' });
+  },
+  export(){
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `life-roadmap-${iso(today()).replace(/-/g,'')}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+};
+
+/* ---------- イベント ---------- */
+let suppressClick = false;
+document.addEventListener('click', e => {
+  if (suppressClick) return;
+  if (e.target.dataset && e.target.dataset.bg && e.target === e.currentTarget.querySelector('.ov-bg')){
+    if (view.sheet && view.sheet.kind !== 'setup') closeSheet();
+    return;
+  }
+  const el = e.target.closest('[data-action]');
+  if (el){
+    if (el.disabled) return;
+    const fn = actions[el.dataset.action];
+    if (fn){ e.preventDefault(); fn(el, e); }
+    return;
+  }
+  // 時間軸の何もない場所をタップ → その年齢を開く
+  if (sc.contains(e.target) && data.settings.configured){
+    const x = e.clientX - wrapEl.getBoundingClientRect().left;
+    const a = Math.floor(xToAge(x));
+    const s = data.settings;
+    if (a >= s.minAge && a <= s.maxAge){ view.selAge = a; openSheet({ kind:'age', age:a }); }
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'iMonth') updYear();
+  if (t.type === 'radio' && /bm$/.test(t.name)){
+    const px = t.name.slice(0, -2);
+    document.querySelectorAll(`[data-bm="${px}"]`).forEach(d => { d.hidden = d.dataset.show !== t.value; });
+  }
+  if (t.id === 'importFile' && t.files && t.files[0]){
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = normalize(JSON.parse(r.result));
+        if (!confirm(`項目${d.items.length}件・家族${d.family.length}人のデータを読み込みます。\nいまのデータは置き換わります。よろしいですか？`)) return;
+        data = d; data.settings.configured = true; save(); view.sheet = null; render(); scrollToNow(false); toast('読み込みました');
+      } catch(err){ toast('読み込めないファイルです'); }
+    };
+    r.readAsText(t.files[0]);
+  }
+});
+document.addEventListener('input', e => { if (e.target.id === 'iAge') updYear(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && view.sheet && view.sheet.kind !== 'setup') closeSheet();
+});
+
+// PC：Ctrl＋ホイール（トラックパッドのピンチ）で拡大縮小、縦ホイールで横移動
+let lastWheel = 0;
+sc.addEventListener('wheel', e => {
+  if (e.ctrlKey){
+    e.preventDefault();
+    const t = Date.now(); if (t - lastWheel < 200) return; lastWheel = t;
+    zoomBy(e.deltaY < 0 ? 1 : -1, e.clientX - sc.getBoundingClientRect().left);
+    return;
+  }
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && sc.scrollHeight <= sc.clientHeight + 1){
+    sc.scrollLeft += e.deltaY; e.preventDefault();
+  }
+}, { passive:false });
+
+// PC：マウスドラッグで移動
+let drag = null;
+sc.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'mouse' || e.button !== 0) return;
+  drag = { x:e.clientX, y:e.clientY, l:sc.scrollLeft, t:sc.scrollTop, moved:false };
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) > 5){ drag.moved = true; sc.classList.add('dragging'); }
+  if (drag.moved){ sc.scrollLeft = drag.l - dx; sc.scrollTop = drag.t - dy; }
+});
+window.addEventListener('pointerup', () => {
+  if (drag && drag.moved){ suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
+  drag = null; sc.classList.remove('dragging');
+});
+window.addEventListener('resize', () => { wrapEl.style.minHeight = sc.clientHeight + 'px'; });
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+/* ---------- 起動 ---------- */
+if (!data.settings.configured) view.sheet = { kind:'setup' };
+render();
+if (data.settings.configured) scrollToNow(false);
+</script>
+</body>
+</html>
